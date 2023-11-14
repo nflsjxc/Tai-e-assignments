@@ -26,14 +26,7 @@ import pascal.taie.analysis.dataflow.analysis.AbstractDataflowAnalysis;
 import pascal.taie.analysis.graph.cfg.CFG;
 import pascal.taie.config.AnalysisConfig;
 import pascal.taie.ir.IR;
-import pascal.taie.ir.exp.ArithmeticExp;
-import pascal.taie.ir.exp.BinaryExp;
-import pascal.taie.ir.exp.BitwiseExp;
-import pascal.taie.ir.exp.ConditionExp;
-import pascal.taie.ir.exp.Exp;
-import pascal.taie.ir.exp.IntLiteral;
-import pascal.taie.ir.exp.ShiftExp;
-import pascal.taie.ir.exp.Var;
+import pascal.taie.ir.exp.*;
 import pascal.taie.ir.stmt.DefinitionStmt;
 import pascal.taie.ir.stmt.Stmt;
 import pascal.taie.language.type.PrimitiveType;
@@ -56,36 +49,70 @@ public class ConstantPropagation extends
 
     @Override
     public CPFact newBoundaryFact(CFG<Stmt> cfg) {
-        // TODO - finish me
+        // TODO - finish me - Done
 
-        CPFact fact = new CPFact();
+        CPFact boundaryfact = new CPFact();
 
-        return fact;
+        for(Var param: cfg.getIR().getParams())
+        {
+            boundaryfact.update(param, Value.getNAC());
+        }
+
+        return boundaryfact;
     }
 
     @Override
     public CPFact newInitialFact() {
-        // TODO - finish me
-        return null;
+        // TODO - finish me - Done
+        return new CPFact();
     }
 
     @Override
     public void meetInto(CPFact fact, CPFact target) {
-        // TODO - finish me
+        // TODO - finish me - Done
+        fact.forEach((key, value) -> {
+            target.update(key, meetValue(value, target.get(key)));
+        });
     }
 
     /**
      * Meets two Values.
      */
     public Value meetValue(Value v1, Value v2) {
-        // TODO - finish me
-        return null;
+        // TODO - finish me - Done
+
+        if(v1.isUndef()) return v2;
+        if(v2.isUndef()) return v1;
+
+        if(v1.isNAC() || v2.isNAC()) return Value.getNAC();
+
+        assert (v1.isConstant() && v2.isConstant());
+        if(v1 == v2) return Value.makeConstant(v1.getConstant()); else return Value.getNAC();
     }
 
     @Override
     public boolean transferNode(Stmt stmt, CPFact in, CPFact out) {
         // TODO - finish me
-        return false;
+
+        CPFact new_out = in.copy();
+
+        if(stmt instanceof DefinitionStmt<?,?> s)
+        {
+            if(((DefinitionStmt<?, ?>) stmt).getLValue() instanceof Var var && canHoldInt(var))
+            {
+                CPFact in_copy = in.copy();
+                Value removeval = in.get(var);
+                in_copy.remove(var);
+                Value new_val = evaluate(s.getRValue(), in);
+
+            }
+
+
+        }
+
+
+
+        return new_out != out;
     }
 
     /**
