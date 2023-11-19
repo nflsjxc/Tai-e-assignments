@@ -78,6 +78,7 @@ public class DeadCodeDetection extends MethodAnalysis {
                 liveCode.add(succStmt);
             }
         }
+        liveCode.add(cfg.getEntry());
         // Dead code identification
         for (Stmt stmt: cfg) {
             // 1. Unreachable Code
