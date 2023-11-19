@@ -71,6 +71,45 @@ public class DeadCodeDetection extends MethodAnalysis {
         Set<Stmt> deadCode = new TreeSet<>(Comparator.comparing(Stmt::getIndex));
         // TODO - finish me
         // Your task is to recognize dead code in ir and add it to deadCode
+
+        Set<Stmt> liveCode = new TreeSet<>(Comparator.comparing(Stmt::getIndex));
+        for (Stmt stmt: cfg) {
+            for(Stmt succStmt: cfg.getSuccsOf(stmt)) {
+                liveCode.add(succStmt);
+            }
+        }
+        // Dead code identification
+        for (Stmt stmt: cfg) {
+            // 1. Control-flow Unreachable Code
+            if(!liveCode.contains(stmt)) {
+                deadCode.add(stmt);
+                continue;
+            }
+
+            //2. Unreachable Branch
+            if(stmt instanceof If ifstmt)
+            {
+                // If (x > 0) ...
+                Value cond = ConstantPropagation.evaluate(ifstmt.getCondition(), constants.getInFact(ifstmt));
+                if(!cond.isConstant())continue; // If constant, we need to eliminate dead branch
+                for(Edge<Stmt> edge : cfg.getOutEdgesOf(ifstmt)) {
+                    if(edge.getKind() == Edge.Kind.IF_TRUE && cond.getConstant() == 0) {
+                        deadCode.add(edge.getTarget());
+                        continue;
+                    }
+                    if(edge.getKind() == Edge.Kind.IF_FALSE && cond.getConstant() == 1) {
+                        deadCode.add(edge.getTarget());
+                        continue;
+                    }
+                }
+                continue;
+            }
+
+            if(stmt instanceof SwitchStmt switchstmt) {
+                Value cond = ConstantPropagation.evaluate(switchstmt.getVar(), constants.getInFact(switchstmt));
+            }
+        }
+
         return deadCode;
     }
 

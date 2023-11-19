@@ -147,6 +147,7 @@ public class ConstantPropagation extends
 
     public static Value evaluate(Exp exp, CPFact in) {
         // TODO - finish me - Done
+        // Here For an expression x = ..., exp is the ... part
         //Expression Case 1: x=c
         if(exp instanceof IntLiteral e)
         {
