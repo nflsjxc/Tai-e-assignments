@@ -23,8 +23,13 @@
 package pascal.taie.analysis.dataflow.solver;
 
 import pascal.taie.analysis.dataflow.analysis.DataflowAnalysis;
+import pascal.taie.analysis.dataflow.analysis.constprop.CPFact;
 import pascal.taie.analysis.dataflow.fact.DataflowResult;
 import pascal.taie.analysis.graph.cfg.CFG;
+
+import java.util.ArrayList;
+import java.util.Queue;
+import java.util.LinkedList;
 
 class WorkListSolver<Node, Fact> extends Solver<Node, Fact> {
 
@@ -35,10 +40,34 @@ class WorkListSolver<Node, Fact> extends Solver<Node, Fact> {
     @Override
     protected void doSolveForward(CFG<Node> cfg, DataflowResult<Node, Fact> result) {
         // TODO - finish me
+        ArrayList<Node> worklist=new ArrayList<Node>(cfg.getNodes());
+        while(!worklist.isEmpty())
+        {
+            Node node = worklist.get(0);
+            worklist.remove(0);
+
+            CPFact in = new CPFact();
+            CPFact out = (CPFact) result.getOutFact(node);
+
+            for(Node pred : cfg.getPredsOf(node)){
+                analysis.meetInto(result.getOutFact(pred), (Fact) in);
+            }
+            boolean changed = analysis.transferNode(node, (Fact) in, (Fact) out);
+            if(changed){
+                worklist.addAll(cfg.getSuccsOf(node));
+            }
+//            System.out.println("node: " + node);
+//            System.out.println("in: " + in);
+//            System.out.println("out: " + out);
+//            System.out.println("--------------------");
+
+            result.setInFact(node, (Fact) in);
+            result.setOutFact(node, (Fact) out);
+        }
     }
 
     @Override
     protected void doSolveBackward(CFG<Node> cfg, DataflowResult<Node, Fact> result) {
-        // TODO - finish me
+        throw new UnsupportedOperationException();
     }
 }

@@ -25,20 +25,13 @@ package pascal.taie.analysis.dataflow.analysis.constprop;
 import pascal.taie.analysis.dataflow.analysis.AbstractDataflowAnalysis;
 import pascal.taie.analysis.graph.cfg.CFG;
 import pascal.taie.config.AnalysisConfig;
-import pascal.taie.ir.IR;
-import pascal.taie.ir.exp.ArithmeticExp;
-import pascal.taie.ir.exp.BinaryExp;
-import pascal.taie.ir.exp.BitwiseExp;
-import pascal.taie.ir.exp.ConditionExp;
-import pascal.taie.ir.exp.Exp;
-import pascal.taie.ir.exp.IntLiteral;
-import pascal.taie.ir.exp.ShiftExp;
-import pascal.taie.ir.exp.Var;
+import pascal.taie.ir.exp.*;
 import pascal.taie.ir.stmt.DefinitionStmt;
 import pascal.taie.ir.stmt.Stmt;
 import pascal.taie.language.type.PrimitiveType;
 import pascal.taie.language.type.Type;
-import pascal.taie.util.AnalysisException;
+
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ConstantPropagation extends
         AbstractDataflowAnalysis<Stmt, CPFact> {
@@ -56,33 +49,74 @@ public class ConstantPropagation extends
 
     @Override
     public CPFact newBoundaryFact(CFG<Stmt> cfg) {
-        // TODO - finish me
-        return null;
+        // TODO - finish me - Done
+
+        CPFact boundaryfact = new CPFact();
+        for(Var param: cfg.getIR().getParams())
+        {
+//            System.out.println("param: " + param);
+            if(canHoldInt(param))
+            {
+                boundaryfact.update(param, Value.getNAC());
+            }
+        }
+//        System.out.println("Debug at newBoundaryFact: " + boundaryfact);
+        return boundaryfact;
     }
 
     @Override
     public CPFact newInitialFact() {
-        // TODO - finish me
-        return null;
+        // TODO - finish me - Done
+        return new CPFact();
     }
 
     @Override
     public void meetInto(CPFact fact, CPFact target) {
-        // TODO - finish me
+        // TODO - finish me - Done (Join)
+
+        fact.forEach((var, value) -> {
+            target.update(var, meetValue(value, target.get(var)));
+        });
+
     }
 
     /**
      * Meets two Values.
      */
     public Value meetValue(Value v1, Value v2) {
-        // TODO - finish me
-        return null;
+        // TODO - finish me - Done
+
+        if(v1.isUndef()) return v2;
+        if(v2.isUndef()) return v1;
+
+        if(v1.isNAC() || v2.isNAC()) return Value.getNAC();
+
+        assert (v1.isConstant() && v2.isConstant());
+        if(v1 == v2) return Value.makeConstant(v1.getConstant()); else return Value.getNAC();
     }
 
     @Override
     public boolean transferNode(Stmt stmt, CPFact in, CPFact out) {
         // TODO - finish me
-        return false;
+        AtomicBoolean changed = new AtomicBoolean(false);
+        in.forEach(((var, value) -> {
+            if (out.update(var, value)) {
+                changed.set(true);
+            }
+        }));
+
+        if(stmt instanceof DefinitionStmt<?,?> s)
+        {
+            if(s.getLValue() instanceof Var var && canHoldInt(var))
+            {
+                Value old_val = in.get(var);
+                Value new_val = evaluate(s.getRValue(), in);
+                if(old_val != new_val)changed.set(true);
+                out.update(var, new_val);
+            }
+        }
+
+        return changed.get();
     }
 
     /**
@@ -110,8 +144,132 @@ public class ConstantPropagation extends
      * @param in  IN fact of the statement
      * @return the resulting {@link Value}
      */
+
     public static Value evaluate(Exp exp, CPFact in) {
-        // TODO - finish me
-        return null;
+        // TODO - finish me - Done
+        //Expression Case 1: x=c
+        if(exp instanceof IntLiteral e)
+        {
+            return Value.makeConstant(e.getValue());
+        }
+
+        //Expression Case 2: x=y
+        if(exp instanceof Var var)
+        {
+//            System.out.println("Debug at evaluate: " + exp);
+            return in.get(var);
+        }
+
+        //Expression Case 3: x=y op z
+        if (exp instanceof BinaryExp bexp)
+        {
+            Var y = bexp.getOperand1(), z = bexp.getOperand2();
+
+            //IMPORTANT: NAC/0 still undef!
+            if(in.get(z).isConstant() && in.get(z).getConstant() == 0 && bexp.getOperator() instanceof ArithmeticExp.Op arithop)
+            {
+                if(arithop == ArithmeticExp.Op.DIV || arithop == ArithmeticExp.Op.REM)
+                {
+                    return Value.getUndef();
+                }
+            }
+
+            //const op const
+            if (in.get(y).isConstant() && in.get(z).isConstant())
+            {
+                int y_val = in.get(y).getConstant(), z_val = in.get(z).getConstant();
+                //Arithmetic
+                if (bexp instanceof ArithmeticExp arithexp)
+                {
+                    switch (arithexp.getOperator())
+                    {
+                        case ADD -> {
+                            return Value.makeConstant(y_val + z_val);
+                        }
+                        case SUB -> {
+                            return Value.makeConstant(y_val - z_val);
+                        }
+                        case MUL -> {
+                            return Value.makeConstant(y_val * z_val);
+                        }
+                        case DIV -> {
+                            return Value.makeConstant(y_val / z_val);
+                        }
+                        case REM -> {
+                            return Value.makeConstant(y_val % z_val);
+                        }
+                    }
+                }
+                //Condition
+                if(bexp instanceof ConditionExp condexp)
+                {
+                    switch (condexp.getOperator())
+                    {
+                        case EQ -> {
+                            return Value.makeConstant(y_val == z_val ? 1 : 0);
+                        }
+                        case NE -> {
+                            return Value.makeConstant(y_val != z_val ? 1 : 0);
+                        }
+                        case LT -> {
+                            return Value.makeConstant(y_val < z_val ? 1 : 0);
+                        }
+                        case GT -> {
+                            return Value.makeConstant(y_val > z_val ? 1 : 0);
+                        }
+                        case LE -> {
+                            return Value.makeConstant(y_val <= z_val ? 1 : 0);
+                        }
+                        case GE -> {
+                            return Value.makeConstant(y_val >= z_val ? 1 : 0);
+                        }
+                    }
+                }
+
+                //Shift
+                if (bexp instanceof ShiftExp shiftexp)
+                {
+                    switch (shiftexp.getOperator())
+                    {
+                        case SHL -> {
+                            return Value.makeConstant(y_val << z_val);
+                        }
+                        case SHR -> {
+                            return Value.makeConstant(y_val >> z_val);
+                        }
+                        case USHR -> {
+                            return Value.makeConstant(y_val >>> z_val);
+                        }
+                    }
+                }
+
+                //Bitwise
+                if (bexp instanceof BitwiseExp bitwiseexp)
+                {
+                    switch (bitwiseexp.getOperator())
+                    {
+                        case AND -> {
+                            return Value.makeConstant(y_val & z_val);
+                        }
+                        case OR -> {
+                            return Value.makeConstant(y_val | z_val);
+                        }
+                        case XOR -> {
+                            return Value.makeConstant(y_val ^ z_val);
+                        }
+                    }
+                }
+            }
+
+            //y=NAC / z=NAC
+            if(in.get(y).isNAC() || in.get(z).isNAC()) return Value.getNAC();
+
+            //Undef otherwise
+            return Value.getUndef();
+
+        }
+
+        //TODO: Shouldn't reach? Answer: invokevirtual
+        return Value.getNAC();
     }
 }
