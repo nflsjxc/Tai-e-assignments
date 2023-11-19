@@ -80,33 +80,52 @@ public class DeadCodeDetection extends MethodAnalysis {
         }
         // Dead code identification
         for (Stmt stmt: cfg) {
-            // 1. Control-flow Unreachable Code
+            // 1. Unreachable Code
+
+            // 1.1 Control-flow unreachable Code
             if(!liveCode.contains(stmt)) {
                 deadCode.add(stmt);
                 continue;
             }
 
-            //2. Unreachable Branch
-            if(stmt instanceof If ifstmt)
-            {
+            // 1.2 Unreachable Branch
+            if(stmt instanceof If ifstmt) {//If branches
                 // If (x > 0) ...
                 Value cond = ConstantPropagation.evaluate(ifstmt.getCondition(), constants.getInFact(ifstmt));
-                if(!cond.isConstant())continue; // If constant, we need to eliminate dead branch
+                if(!cond.isConstant())  continue; // If constant, we need to eliminate dead branch
                 for(Edge<Stmt> edge : cfg.getOutEdgesOf(ifstmt)) {
                     if(edge.getKind() == Edge.Kind.IF_TRUE && cond.getConstant() == 0) {
                         deadCode.add(edge.getTarget());
-                        continue;
                     }
                     if(edge.getKind() == Edge.Kind.IF_FALSE && cond.getConstant() == 1) {
                         deadCode.add(edge.getTarget());
-                        continue;
                     }
                 }
                 continue;
             }
 
-            if(stmt instanceof SwitchStmt switchstmt) {
+            if(stmt instanceof SwitchStmt switchstmt) { //Switch branches
                 Value cond = ConstantPropagation.evaluate(switchstmt.getVar(), constants.getInFact(switchstmt));
+                if(!cond.isConstant())continue; // If constant, we need to eliminate dead branch
+                for(Edge<Stmt> edge : cfg.getOutEdgesOf(switchstmt)) {
+                    if(edge.getCaseValue() != cond.getConstant())
+                    {
+                        deadCode.add(edge.getTarget());
+                    }
+                }
+                continue;
+            }
+
+            // 2. Dead Assignment
+            if(stmt instanceof AssignStmt<?, ?> assignstmt) { //Assignments
+                if(assignstmt.getLValue() instanceof Var lvar) {
+                    if(hasNoSideEffect(assignstmt.getRValue())) {
+                        if(!liveVars.getOutFact(assignstmt).contains(lvar)) {
+                            deadCode.add(assignstmt);
+                        }
+                    }
+                }
+                continue;
             }
         }
 
