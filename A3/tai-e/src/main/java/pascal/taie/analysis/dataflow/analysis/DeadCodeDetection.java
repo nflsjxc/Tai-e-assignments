@@ -33,13 +33,7 @@ import pascal.taie.analysis.graph.cfg.CFGBuilder;
 import pascal.taie.analysis.graph.cfg.Edge;
 import pascal.taie.config.AnalysisConfig;
 import pascal.taie.ir.IR;
-import pascal.taie.ir.exp.ArithmeticExp;
-import pascal.taie.ir.exp.ArrayAccess;
-import pascal.taie.ir.exp.CastExp;
-import pascal.taie.ir.exp.FieldAccess;
-import pascal.taie.ir.exp.NewExp;
-import pascal.taie.ir.exp.RValue;
-import pascal.taie.ir.exp.Var;
+import pascal.taie.ir.exp.*;
 import pascal.taie.ir.stmt.AssignStmt;
 import pascal.taie.ir.stmt.If;
 import pascal.taie.ir.stmt.Stmt;
@@ -48,6 +42,10 @@ import pascal.taie.ir.stmt.SwitchStmt;
 import java.util.Comparator;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.HashSet;
+import java.util.Queue;
+import java.util.LinkedList;
+import pascal.taie.util.collection.Pair;
 
 public class DeadCodeDetection extends MethodAnalysis {
 
@@ -73,62 +71,78 @@ public class DeadCodeDetection extends MethodAnalysis {
         // Your task is to recognize dead code in ir and add it to deadCode
 
         Set<Stmt> liveCode = new TreeSet<>(Comparator.comparing(Stmt::getIndex));
-        for (Stmt stmt: cfg) {
-            for(Stmt succStmt: cfg.getSuccsOf(stmt)) {
-                liveCode.add(succStmt);
-            }
-        }
-        liveCode.add(cfg.getEntry());
+        Queue<Stmt> queue = new LinkedList<>();
+        queue.add(cfg.getEntry());
         // Dead code identification
-        for (Stmt stmt: cfg) {
-            // 1. Unreachable Code
-
-            // 1.1 Control-flow unreachable Code
-            if(!liveCode.contains(stmt)) {
-                deadCode.add(stmt);
-                continue;
+        while(!queue.isEmpty()) {
+            Stmt stmt = queue.poll();
+            System.out.println("Queue stmt: "+ "idx: "+stmt.getIndex()+", stmt: " +stmt);
+            if(liveCode.contains(stmt))continue;
+            // 2. Dead Assignment
+            // Process this first because this part may not be added into livecode in 1.1
+            if(stmt instanceof AssignStmt<?, ?> assignstmt) { //Assignments
+                if(assignstmt.getLValue() instanceof Var lvar && hasNoSideEffect(assignstmt.getRValue())) {
+                        if(!liveVars.getOutFact(assignstmt).contains(lvar)) {
+                            queue.addAll(cfg.getSuccsOf(assignstmt));
+                            continue;
+                        }
+                }
             }
+            //1.1 Control-flow Unreachable Code
+            if(!liveCode.add(stmt))continue;//Add stmt to livecode
 
             // 1.2 Unreachable Branch
             if(stmt instanceof If ifstmt) {//If branches
                 // If (x > 0) ...
                 Value cond = ConstantPropagation.evaluate(ifstmt.getCondition(), constants.getInFact(ifstmt));
-                if(!cond.isConstant())  continue; // If constant, we need to eliminate dead branch
+                if(!cond.isConstant()) {
+                    queue.addAll(cfg.getSuccsOf(ifstmt));
+                    continue;
+                }
+                // If constant, we need to eliminate dead branch
+//                System.out.println("Cond stmt: "+ "idx: "+stmt.getIndex()+", stmt: " +stmt);
                 for(Edge<Stmt> edge : cfg.getOutEdgesOf(ifstmt)) {
-                    if(edge.getKind() == Edge.Kind.IF_TRUE && cond.getConstant() == 0) {
-                        deadCode.add(edge.getTarget());
+                    if(edge.getKind() == Edge.Kind.IF_TRUE && cond.getConstant() == 1) {
+//                        System.out.println(" Adding: "+ edge.getTarget());
+                        queue.add(edge.getTarget());
                     }
-                    if(edge.getKind() == Edge.Kind.IF_FALSE && cond.getConstant() == 1) {
-                        deadCode.add(edge.getTarget());
+                    if(edge.getKind() == Edge.Kind.IF_FALSE && cond.getConstant() == 0) {
+//                        System.out.println(" Adding: "+ edge.getTarget());
+                        queue.add(edge.getTarget());
                     }
                 }
-                continue;
             }
-
-            if(stmt instanceof SwitchStmt switchstmt) { //Switch branches
+            else if(stmt instanceof SwitchStmt switchstmt) { //Switch branches
                 Value cond = ConstantPropagation.evaluate(switchstmt.getVar(), constants.getInFact(switchstmt));
-                if(!cond.isConstant())continue; // If constant, we need to eliminate dead branch
-                for(Edge<Stmt> edge : cfg.getOutEdgesOf(switchstmt)) {
-                    if(edge.getCaseValue() != cond.getConstant())
-                    {
-                        deadCode.add(edge.getTarget());
-                    }
+                if(!cond.isConstant()) {
+                    queue.addAll(cfg.getSuccsOf(switchstmt));
+                    continue;
                 }
-                continue;
-            }
-
-            // 2. Dead Assignment
-            if(stmt instanceof AssignStmt<?, ?> assignstmt) { //Assignments
-                if(assignstmt.getLValue() instanceof Var lvar) {
-                    if(hasNoSideEffect(assignstmt.getRValue())) {
-                        if(!liveVars.getOutFact(assignstmt).contains(lvar)) {
-                            deadCode.add(assignstmt);
+                // If constant, we need to eliminate dead branch
+                boolean hasDefault = true;
+                for(Edge<Stmt> edge : cfg.getOutEdgesOf(switchstmt)) {
+                    if(edge.isSwitchCase()) {
+                        if (edge.getCaseValue() == cond.getConstant()) {
+                            hasDefault = false;
+                            queue.add(edge.getTarget());
                         }
                     }
                 }
-                continue;
+                if(hasDefault) {
+                    queue.add(switchstmt.getDefaultTarget());
+                }
             }
+            else {
+                //Add successors to queue to identify 1.1 Control-flow Unreachable Code
+                System.out.println("Adding " + stmt + " " +cfg.getSuccsOf(stmt));
+                queue.addAll(cfg.getSuccsOf(stmt));
+            }
+
         }
+
+        deadCode.addAll(cfg.getNodes());
+        deadCode.removeAll(liveCode);
+        deadCode.remove(cfg.getExit()); //Sometimes exit is not visited?
 
         return deadCode;
     }
