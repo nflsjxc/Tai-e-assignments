@@ -104,4 +104,7 @@ class PointsToSet implements Iterable<Obj> {
     public String toString() {
         return set.toString();
     }
+
+    public void foreach() {
+    }
 }
