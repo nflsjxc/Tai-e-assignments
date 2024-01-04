@@ -42,19 +42,38 @@ public class _2ObjSelector implements ContextSelector {
 
     @Override
     public Context selectContext(CSCallSite callSite, JMethod callee) {
-        // TODO - finish me
-        return null;
+        // Done - finish me
+        // In object and type sensitivity, the convention of handling static methods is to directly use
+        // the caller context as the context of the callee (namely, the target method of the static call).
+        return callSite.getContext();
     }
 
     @Override
     public Context selectContext(CSCallSite callSite, CSObj recv, JMethod callee) {
-        // TODO - finish me
-        return null;
+        // Done - finish me
+        // Notice: call's context may be different from object's context - processcall(c:x, c':o)
+        Context callerContext = recv.getContext();
+        int len = callerContext.getLength();
+        Context calleeContext;
+        if(len >= 1)
+            calleeContext = ListContext.make(callerContext.getElementAt(len-1), recv.getObject());
+        else
+            calleeContext = ListContext.make(recv.getObject());
+        return calleeContext;
     }
 
     @Override
     public Context selectHeapContext(CSMethod method, Obj obj) {
-        // TODO - finish me
-        return null;
+        // Done - finish me
+        // it is used for x=new T(), so we just use T's context
+        // Only for call we need to recalculate context
+        Context callerContext = method.getContext();
+        int len = callerContext.getLength();
+        Context calleeContext;
+        if(len >= 1)
+            calleeContext = ListContext.make(callerContext.getElementAt(len-1));
+        else
+            calleeContext = ListContext.make();
+        return calleeContext;
     }
 }
