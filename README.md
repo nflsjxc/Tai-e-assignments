@@ -12,6 +12,6 @@ If you want to do the assignments, please start with "*Overview of Tai-e Assignm
 
 #### README
 
-This is my own solution, with reference of many existing blogs and repos. Please do not plagiarize. 
+This is my solution, with reference of many existing blogs and repos. Please do not plagiarize. 
 
 Some of the tricky spots for me are marked with `Notice:` in the comments.
