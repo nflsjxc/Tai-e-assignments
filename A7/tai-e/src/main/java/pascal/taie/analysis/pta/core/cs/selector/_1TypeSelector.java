@@ -42,19 +42,22 @@ public class _1TypeSelector implements ContextSelector {
 
     @Override
     public Context selectContext(CSCallSite callSite, JMethod callee) {
-        // TODO - finish me
-        return null;
+        // Done - finish me
+        // In object and type sensitivity, the convention of handling static methods is to directly use
+        // the caller context as the context of the callee (namely, the target method of the static call).
+        return callSite.getContext();
     }
 
     @Override
     public Context selectContext(CSCallSite callSite, CSObj recv, JMethod callee) {
-        // TODO - finish me
-        return null;
+        // Done - finish me
+        // Notice it is container type!
+        return ListContext.make(recv.getObject().getContainerType());
     }
 
     @Override
     public Context selectHeapContext(CSMethod method, Obj obj) {
-        // TODO - finish me
-        return null;
+        // Done - finish me
+        return ListContext.make();
     }
 }
