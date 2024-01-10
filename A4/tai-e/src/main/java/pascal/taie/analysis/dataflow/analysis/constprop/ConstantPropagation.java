@@ -269,7 +269,7 @@ public class ConstantPropagation extends
 
         }
 
-        //TODO: Shouldn't reach? Answer: invokevirtual
+        //TODO: Shouldn't reach? Answer: load field: Point a, x=a.f
         return Value.getNAC();
     }
 }
