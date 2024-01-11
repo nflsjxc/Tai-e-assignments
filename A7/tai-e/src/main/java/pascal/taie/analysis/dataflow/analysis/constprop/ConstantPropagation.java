@@ -272,28 +272,27 @@ public class ConstantPropagation extends
 
         // Expression Case 4: instanceField
         if (exp instanceof InstanceFieldAccess instanceExp) {
+        //============== Version1: Use instanceManager ===================
 //            Value temp = Value.getUndef();
 //            for(Obj obj : pta.getPointsToSet(instanceExp.getBase())){
 //                temp = meetValue(temp, instanceManager.getOrDefault(new Pair<>(obj, instanceExp.getFieldRef()), Value.getUndef()));
 //            }
 //            return temp;
 
+
+            //============== Version2: Use varManager ===================
             Value temp_var = Value.getUndef();
             temp_var = meetValue(temp_var,
                     varManager.getOrDefault(new Pair<>(instanceExp.getBase().getName(), instanceExp.getFieldRef()),
                             Value.getUndef()));
             return temp_var;
-//            System.out.println("================");
-//            System.out.println(instanceExp);
-//            System.out.println(temp_var + "/" + temp);
-//            assert(temp_var.equals(temp));
-
-            // Notice: the commented version needs to be treated carefully.
+            // Notice: the commented version using varManager needs to be treated carefully.
             // the key problem is that the statement is polled from the worklist,
-            // which means that it is a copy of the original statement.
+            // which means that it is a copy of the original statement. The new stmt is a copy instead of a reference
             // So we cannot use the new statement to get the original variable, which serves as the key in varManager.
-            // Consequently we cannot get the value of the variable from varManager.
-            // One possible solution is to use instanceexp.getbase.getname() to make sure we use the String as the Key
+            // Consequently, we cannot get the value of the variable from varManager.
+            // My solution is to use instanceexp.getbase.getname() instead of instanceexp.getbase()
+            // to make sure we use the String as the Key
 
         }
 

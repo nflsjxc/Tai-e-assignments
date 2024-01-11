@@ -95,6 +95,7 @@ class InterSolver<Method, Node, Fact> {
         workList = new LinkedList<>(icfg.getNodes());
         while (!workList.isEmpty()) {
             Node node = workList.poll();
+//            System.out.println("Processing node: " + node);
             CPFact in = new CPFact();
             CPFact out = (CPFact) result.getOutFact(node);
             for(ICFGEdge<Node> edge : icfg.getInEdgesOf(node)) {
@@ -104,7 +105,7 @@ class InterSolver<Method, Node, Fact> {
             // We process store here and process load in ConstantPropagation.evaluate
             // Process here to update alias map
             processStoreField((Stmt) node, in);
-            processStoreArray((Stmt)node, in);
+            processStoreArray((Stmt) node, in);
 
             if(analysis.transferNode(node, (Fact)in, (Fact)out)) {
                 workList.addAll(icfg.getSuccsOf(node));
@@ -120,40 +121,48 @@ class InterSolver<Method, Node, Fact> {
             if(!ConstantPropagation.canHoldInt(s.getRValue())) return;
             // Instance store Field: x.f = y
             if(s.getFieldAccess() instanceof InstanceFieldAccess instanceExp) {
+
+                ////                 ========Version 1: Use instanceManager ===================
+//                Var base = instanceExp.getBase();
+//                pta.getPointsToSet(base).forEach( obj ->
+//                        {
+//                            Pair<?,FieldRef> qPair = new Pair<>(obj, s.getFieldRef());
+//                            Value newVal = ConstantPropagation.evaluate(s.getRValue(), in);
+//                            Value oldVal = instanceManager.getOrDefault(qPair, Value.getUndef());
+//                            newVal = meetValue(newVal, oldVal);
+//                            instanceManager.put(qPair, newVal);
+//                            if(!newVal.equals(oldVal)) {
+//                                Set<Var> aliasVars = varAliasMap.getOrDefault(base, new HashSet<>());
+//                                aliasVars.forEach(var -> {
+//                                    var.getLoadFields().stream()
+//                                            .filter(loadField -> loadField.getFieldRef().equals(s.getFieldRef()))
+//                                            // Only add alias variable load statements where we are operating on the same field to the worklist
+//                                            .forEach(loadField -> {workList.add((Node) loadField);});
+//                                });
+//                            }
+//                        }
+//                );
+//            }
+                // ========Version 2: Use varManager ===================
                 Var base = instanceExp.getBase();
-//                Pair<Var,FieldRef> qPair_var = new Pair<>(base, s.getFieldRef());
-//                Value newVal_var = ConstantPropagation.evaluate(s.getRValue(), in);
-//                Value oldVal_var = varManager.getOrDefault(qPair_var, Value.getUndef());
-//                newVal_var = meetValue(newVal_var, oldVal_var);
-//                varManager.put(qPair_var, newVal_var);
-//                if(!newVal_var.equals(oldVal_var)) {
-//                    Set<Var> aliasVars = varAliasMap.getOrDefault(base, new HashSet<>());
-//                    aliasVars.forEach(var -> {
-//                        var.getLoadFields().stream()
-//                                .filter(loadField -> loadField.getFieldRef().equals(s.getFieldRef()))
-//                                // Only add alias variable load statements where we are operating on the same field to the worklist
-//                                .forEach(loadField -> {workList.add((Node) loadField);});
-//                    });
-//                }
-                pta.getPointsToSet(base).forEach( obj ->
-                        {
-                            Pair<?,FieldRef> qPair = new Pair<>(obj, s.getFieldRef());
-                            Value newVal = ConstantPropagation.evaluate(s.getRValue(), in);
-                            Value oldVal = instanceManager.getOrDefault(qPair, Value.getUndef());
-                            newVal = meetValue(newVal, oldVal);
-                            instanceManager.put(qPair, newVal);
-                            if(!newVal.equals(oldVal)) {
-                                Set<Var> aliasVars = varAliasMap.getOrDefault(base, new HashSet<>());
-                                aliasVars.forEach(var -> {
-                                    var.getLoadFields().stream()
-                                            .filter(loadField -> loadField.getFieldRef().equals(s.getFieldRef()))
-                                            // Only add alias variable load statements where we are operating on the same field to the worklist
-                                            .forEach(loadField -> {workList.add((Node) loadField);});
+                Pair<String, FieldRef> qPair_var = new Pair<>(base.getName(), s.getFieldRef());
+                Value newVal_var = ConstantPropagation.evaluate(s.getRValue(), in);
+                Value oldVal_var = varManager.getOrDefault(qPair_var, Value.getUndef());
+                newVal_var = meetValue(newVal_var, oldVal_var);
+                varManager.put(qPair_var, newVal_var);
+                if (!newVal_var.equals(oldVal_var)) {
+                    Set<Var> aliasVars = varAliasMap.getOrDefault(base, new HashSet<>());
+                    aliasVars.forEach(var -> {
+                        var.getLoadFields().stream()
+                                .filter(loadField -> loadField.getFieldRef().equals(s.getFieldRef()))
+                                // Only add alias variable load statements where we are operating on the same field to the worklist
+                                .forEach(loadField -> {
+                                    workList.add((Node) loadField);
                                 });
-                            }
-                        }
-                );
+                    });
+                }
             }
+
             // Static field Store: T.f = x
             if(s.getFieldAccess() instanceof StaticFieldAccess staticExp) {
                 JClass jClass = staticExp.getFieldRef().getDeclaringClass();
