@@ -72,8 +72,8 @@ public class InterConstantPropagation extends
     //This is the map maintaining static field values
     //K1: JClass, K2: JField, V: Value
 
-     public static Map<Pair<String, FieldRef>, Value> varManager = new HashMap<>();
-    // This is the map maintaining variable values, which won't work (Notice!)
+    public static Map<Pair<Var, FieldRef>, Value> varManager = new HashMap<>();
+    // This is the map maintaining variable values
     public static Map<Pair<JClass, JField>, Set<LoadField>> staticLoadFields = new HashMap<>();
 
     public InterConstantPropagation(AnalysisConfig config) {

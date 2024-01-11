@@ -272,29 +272,14 @@ public class ConstantPropagation extends
 
         // Expression Case 4: instanceField
         if (exp instanceof InstanceFieldAccess instanceExp) {
-//            Value temp = Value.getUndef();
-//            for(Obj obj : pta.getPointsToSet(instanceExp.getBase())){
-//                temp = meetValue(temp, instanceManager.getOrDefault(new Pair<>(obj, instanceExp.getFieldRef()), Value.getUndef()));
-//            }
-//            return temp;
-
-            Value temp_var = Value.getUndef();
-            temp_var = meetValue(temp_var,
-                    varManager.getOrDefault(new Pair<>(instanceExp.getBase().getName(), instanceExp.getFieldRef()),
-                            Value.getUndef()));
-            return temp_var;
-//            System.out.println("================");
-//            System.out.println(instanceExp);
-//            System.out.println(temp_var + "/" + temp);
-//            assert(temp_var.equals(temp));
-
-            // Notice: the commented version won't work.
-            // the key problem is that the statement is polled from the worklist,
-            // which means that it is a copy of the original statement.
-            // So we cannot use the new statement to get the original variable, which serves as the key in varManager.
-            // Consequently we cannot get the value of the variable from varManager.
-            // One possible solution is to use instanceexp.getbase.getname() to make sure we use the String as the Key
-
+            Value temp = Value.getUndef();
+            for(Obj obj : pta.getPointsToSet(instanceExp.getBase())){
+                temp = meetValue(temp, instanceManager.getOrDefault(new Pair<>(obj, instanceExp.getFieldRef()), Value.getUndef()));
+            }
+//            Value temp_var = Value.getUndef();
+//            temp_var = meetValue(temp, varManager.getOrDefault(new Pair<>(instanceExp.getBase(), instanceExp.getFieldRef()), Value.getUndef()));
+//            System.out.println("temp: " + temp + "; temp_var: " + temp_var);
+            return temp;
         }
 
         //Expression Case 5: staticField

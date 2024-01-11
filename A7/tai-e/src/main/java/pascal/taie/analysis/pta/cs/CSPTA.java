@@ -78,8 +78,8 @@ public class CSPTA extends ProgramAnalysis {
             } catch (RuntimeException e) {
                 throw new ConfigException("Unexpected context-sensitivity variants: " + cs, e);
             } catch (ClassNotFoundException | NoSuchMethodException |
-                    InvocationTargetException | InstantiationException |
-                    IllegalAccessException e) {
+                     InvocationTargetException | InstantiationException |
+                     IllegalAccessException e) {
                 throw new ConfigException("Failed to initialize context selector: " + cs, e);
             }
         }
