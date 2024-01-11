@@ -288,7 +288,7 @@ public class ConstantPropagation extends
 //            System.out.println(temp_var + "/" + temp);
 //            assert(temp_var.equals(temp));
 
-            // Notice: the commented version won't work.
+            // Notice: the commented version needs to be treated carefully.
             // the key problem is that the statement is polled from the worklist,
             // which means that it is a copy of the original statement.
             // So we cannot use the new statement to get the original variable, which serves as the key in varManager.
