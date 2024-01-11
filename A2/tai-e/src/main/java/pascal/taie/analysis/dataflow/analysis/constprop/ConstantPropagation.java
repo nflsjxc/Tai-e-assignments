@@ -33,6 +33,8 @@ import pascal.taie.language.type.Type;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.sun.jdi.Value;
+
 public class ConstantPropagation extends
         AbstractDataflowAnalysis<Stmt, CPFact> {
 
@@ -92,7 +94,7 @@ public class ConstantPropagation extends
         if(v1.isNAC() || v2.isNAC()) return Value.getNAC();
 
         assert (v1.isConstant() && v2.isConstant());
-        if(v1 == v2) return Value.makeConstant(v1.getConstant()); else return Value.getNAC();
+        if(v1.equals(v2)) return Value.makeConstant(v1.getConstant()); else return Value.getNAC();
     }
 
     @Override
