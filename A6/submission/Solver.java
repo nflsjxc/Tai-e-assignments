@@ -330,6 +330,12 @@ class Solver {
 //        System.out.println("#####Processing calleemethod: "+csCalleeMethod.getMethod());
         // Notice: when we reach here we have ensured that the method should be in the call graph
         addReachable(csCalleeMethod);
+
+        // Notice: Remember for static call we still need to expand callGraph!
+        Invoke invoke = csCallSite.getCallSite();
+        CallKind callKind = CallGraphs.getCallKind(invoke);
+        callGraph.addEdge(new Edge<>(callKind, csCallSite, csCalleeMethod));
+
         Context callerContext = csCallSite.getContext();
         Context calleeContext = csCalleeMethod.getContext();
         //parameter passing, arg -> function param
