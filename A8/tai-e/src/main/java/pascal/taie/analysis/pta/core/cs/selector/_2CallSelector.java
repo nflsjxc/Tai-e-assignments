@@ -31,6 +31,8 @@ import pascal.taie.analysis.pta.core.heap.Obj;
 import pascal.taie.ir.stmt.Invoke;
 import pascal.taie.language.classes.JMethod;
 
+import java.util.List;
+
 /**
  * Implementation of 2-call-site sensitivity.
  */
@@ -43,19 +45,35 @@ public class _2CallSelector implements ContextSelector {
 
     @Override
     public Context selectContext(CSCallSite callSite, JMethod callee) {
-        // TODO - finish me
-        return null;
+        // Done - finish me
+        Context callerContext = callSite.getContext();
+        int len = callerContext.getLength();
+        Context calleeContext;
+        if(len >= 1)
+            calleeContext = ListContext.make(callerContext.getElementAt(len-1), callSite.getCallSite());
+        else
+            calleeContext = ListContext.make(callSite.getCallSite());
+        return calleeContext;
     }
 
     @Override
     public Context selectContext(CSCallSite callSite, CSObj recv, JMethod callee) {
-        // TODO - finish me
-        return null;
+        // Done - finish me
+        return selectContext(callSite, callee);
     }
 
     @Override
     public Context selectHeapContext(CSMethod method, Obj obj) {
-        // TODO - finish me
-        return null;
+        // Done - finish me
+        // it is used for x=new T(), so we just use T's context
+        // Only for call we need to recalculate context
+        Context callerContext = method.getContext();
+        int len = callerContext.getLength();
+        Context calleeContext;
+        if(len >= 1)
+            calleeContext = ListContext.make(callerContext.getElementAt(len-1));
+        else
+            calleeContext = ListContext.make();
+        return calleeContext;
     }
 }

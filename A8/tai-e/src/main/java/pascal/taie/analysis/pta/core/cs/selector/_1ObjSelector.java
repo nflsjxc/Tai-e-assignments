@@ -30,6 +30,8 @@ import pascal.taie.analysis.pta.core.cs.element.CSObj;
 import pascal.taie.analysis.pta.core.heap.Obj;
 import pascal.taie.language.classes.JMethod;
 
+import java.util.List;
+
 /**
  * Implementation of 1-object sensitivity.
  */
@@ -42,19 +44,21 @@ public class _1ObjSelector implements ContextSelector {
 
     @Override
     public Context selectContext(CSCallSite callSite, JMethod callee) {
-        // TODO - finish me
-        return null;
+        // Done - finish me
+        // In object and type sensitivity, the convention of handling static methods is to directly use
+        // the caller context as the context of the callee (namely, the target method of the static call).
+        return callSite.getContext();
     }
 
     @Override
     public Context selectContext(CSCallSite callSite, CSObj recv, JMethod callee) {
-        // TODO - finish me
-        return null;
+        // Done - finish me
+        return ListContext.make(recv.getObject());
     }
 
     @Override
     public Context selectHeapContext(CSMethod method, Obj obj) {
-        // TODO - finish me
-        return null;
+        // Done - finish me
+        return ListContext.make();
     }
 }
